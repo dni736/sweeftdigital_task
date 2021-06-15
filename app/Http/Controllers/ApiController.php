@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use Illuminate\Support\Facades\Storage;
-use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
-class ProductController extends Controller
+class ApiController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -16,8 +15,7 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $products = Product::orderBy('created_at')->paginate(5);
-        return view('products.index')->with('products', $products);
+        return Product::all();
     }
 
     /**
@@ -27,7 +25,7 @@ class ProductController extends Controller
      */
     public function create()
     {
-        return view('products.create');
+        //
     }
 
     /**
@@ -38,10 +36,11 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $this->validate($request,[
+        $validator = Validator::make($request->all(), [
             'title'=>'required',
             'description'=>'required',
-            'price'=>'required|numeric|min:0'
+            'price'=>'required|numeric|min:0',
+            'currency'=>'required|in:GEL,USD,EUR'
         ]);
 
         $product = new Product;
@@ -49,71 +48,102 @@ class ProductController extends Controller
         $product->description = $request->input('description');
         $product->price = $request->input('price');
         $product->currency = $request->input('currency');
+
+        if ($validator->fails()) {
+            return response()->json([
+                "status" => false,
+                "message" => "Invalid data"
+            ])->setStatusCode(400);
+        }
         $product->save();
 
-        return redirect('/products');
+        return \response($product, 201);
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Product  $product
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function show($id)
     {
         $product = Product::find($id);
-        return view('products.show')->with('product', $product);
+
+        if (!$product) {
+            return response()->json([
+                "status" => false,
+                "message" => "Post with the id ". $id . " not found"
+            ])->setStatusCode(404);
+        }
+
+        return $product;
     }
 
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Product  $product
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function edit($id)
     {
-        $product = Product::find($id);
-        return view('products.edit')->with('product', $product);
+        //
     }
 
     /**
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Product  $product
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
         $product = Product::find($id);
-        $this->validate($request,[
+
+        $validator = Validator::make($request->all(), [
             'title'=>'required',
             'description'=>'required',
-            'price'=>'required|numeric|min:0'
+            'price'=>'required|numeric|min:0',
+            'currency'=>'required|in:GEL,USD,EUR'
         ]);
 
         $product->title = $request->input('title');
         $product->description = $request->input('description');
         $product->price = $request->input('price');
         $product->currency = $request->input('currency');
+
+        if ($validator->fails()) {
+            return response()->json([
+                "status" => false,
+                "message" => "Invalid data"
+            ])->setStatusCode(400);
+        }
+
         $product->save();
 
-        return redirect('/products');
+        return $product;
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Product  $product
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
     {
         $product = Product::find($id);
-        $product->delete();
 
-        return redirect('/products');
+        if (!$product) {
+            return response()->json([
+                "status" => false,
+                "message" => "Post with the id ". $id . " not found"
+            ])->setStatusCode(404);
+        }
+        
+        $product->delete();
+        return Product::all();
     }
 }
